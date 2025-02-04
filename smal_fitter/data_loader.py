@@ -63,7 +63,7 @@ def load_badja_sequence(BADJA_PATH, sequence_name, crop_size, image_range = None
     visibility = torch.FloatTensor(np.stack(visibility, axis = 0).astype(np.float))
 
     ## Sets invalid joints (i.e. not labelled) as invisible
-    invalid_joints = np.array(config.BADJA_ANNOTATED_CLASSES) == -1
+    invalid_joints = torch.tensor(config.BADJA_ANNOTATED_CLASSES) == -1
     visibility[:, invalid_joints] = 0.0
     
     return (rgb, sil, joints, visibility), file_names

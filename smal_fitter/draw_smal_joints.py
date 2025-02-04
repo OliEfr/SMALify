@@ -9,10 +9,10 @@ import config
 class SMALJointDrawer():
     @staticmethod
     def draw_joints(image, landmarks, visible = None):
-        image_np = np.transpose(image.cpu().data.numpy(), (0, 2, 3, 1))
-        landmarks_np = landmarks.cpu().data.numpy()
+        image_np = np.transpose(np.array(image.cpu().tolist()), (0, 2, 3, 1))
+        landmarks_np = np.array(landmarks.cpu().tolist())
         if visible is not None:
-            visible_np = visible.cpu().data.numpy()
+            visible_np = np.array(visible.cpu().tolist())
         else:
             visible_np = visible
 
@@ -37,7 +37,7 @@ class SMALJointDrawer():
                 if not vis:
                     x_co, y_co = inv_ctr * 10, 0
                     inv_ctr += 1
-                cv2.drawMarker(image_sgl, (x_co, y_co), (int(color[0]), int(color[1]), int(color[2])), marker_type, 8, thickness = 3)
+                cv2.drawMarker(image_sgl, (int(x_co), int(y_co)), (int(color[0]), int(color[1]), int(color[2])), marker_type, 8, thickness = 3)
 
             return_images.append(image_sgl)
 

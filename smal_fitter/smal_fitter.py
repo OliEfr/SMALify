@@ -1,4 +1,5 @@
 
+from turtle import color
 from draw_smal_joints import SMALJointDrawer
 
 import matplotlib.pyplot as plt
@@ -48,7 +49,7 @@ class SMALFitter(nn.Module):
         if use_unity_prior:
             unity_data = np.load(config.UNITY_SHAPE_PRIOR) 
             model_covs = unity_data['cov'][:-1, :-1]
-            mean_betas = torch.from_numpy(unity_data['mean'][:-1]).float().to(device)
+            mean_betas = torch.tensor(unity_data['mean'][:-1], dtype=torch.float64).to(device)
             self.mean_betas = mean_betas.clone()
 
             invcov = np.linalg.inv(model_covs + 1e-5 * np.eye(model_covs.shape[0]))
@@ -79,7 +80,7 @@ class SMALFitter(nn.Module):
         # self.min_limits = torch.FloatTensor(limit_prior.min_values).view(config.N_POSE, 3).to(device)
 
         global_rotation_np = eul_to_axis(np.array([-np.pi / 2, 0, -np.pi / 2]))
-        global_rotation = torch.from_numpy(global_rotation_np).float().to(device).unsqueeze(0).repeat(self.num_images, 1) # Global Init (Head-On)
+        global_rotation = torch.tensor(global_rotation_np).to(device).unsqueeze(0).repeat(self.num_images, 1) # Global Init (Head-On)
         self.global_rotation = nn.Parameter(global_rotation)
 
         trans = torch.FloatTensor([0.0, 0.0, 0.0])[None, :].to(device).repeat(self.num_images, 1) # Trans Init
@@ -167,7 +168,7 @@ class SMALFitter(nn.Module):
                 all_betas = batch_params['betas']
 
             diff_betas = (all_betas - self.mean_betas.unsqueeze(0)) # N, B
-            res = torch.tensordot(diff_betas , self.betas_prec, dims = ([1], [0]))
+            res = torch.tensordot(diff_betas.float() , self.betas_prec.float(), dims = ([1], [0]))
             objs['betas'] = w_betas * (res ** 2).mean()    
         if w_reproj > 0:
             objs['sil_reproj'] = w_reproj * F.l1_loss(rendered_silhouettes, sil_imgs)
@@ -197,17 +198,18 @@ class SMALFitter(nn.Module):
             param_file = os.path.join(checkpoint_path, "{0:04}".format(frame_id), "{0}.pkl".format(epoch))
             with open(param_file, 'rb') as f:
                 img_parameters = pkl.load(f)
-                self.global_rotation[frame_id] = torch.from_numpy(img_parameters['global_rotation']).float().to(self.device)
-                self.joint_rotations[frame_id] = torch.from_numpy(img_parameters['joint_rotations']).float().to(self.device).view(config.N_POSE, 3)
-                self.trans[frame_id] = torch.from_numpy(img_parameters['trans']).float().to(self.device)
+                with torch.no_grad():
+                    self.global_rotation[frame_id] = torch.tensor(img_parameters['global_rotation']).to(self.device)
+                    self.joint_rotations[frame_id] = torch.tensor(img_parameters['joint_rotations']).to(self.device).view(config.N_POSE, 3)
+                    self.trans[frame_id] = torch.tensor(img_parameters['trans']).to(self.device)
                 beta_list.append(img_parameters['betas'][:self.n_betas])
                 scale_list.append(img_parameters['log_betascale'])
 
-        self.betas = torch.nn.Parameter(torch.from_numpy(np.mean(beta_list, axis = 0)).float().to(self.device))
-        self.log_beta_scales = torch.nn.Parameter(torch.from_numpy(np.mean(scale_list, axis = 0)).float().to(self.device))
+        self.betas = torch.nn.Parameter(torch.tensor(np.mean(beta_list, axis = 0)).float().to(self.device))
+        self.log_beta_scales = torch.nn.Parameter(torch.tensor(np.mean(scale_list, axis = 0)).float().to(self.device))
 
     def generate_visualization(self, image_exporter):
-        rot_matrix = torch.from_numpy(R.from_euler('y', 180.0, degrees=True).as_dcm()).float().to(self.device)
+        rot_matrix = torch.tensor(R.from_euler('y', 180.0, degrees=True).as_dcm()).float().to(self.device)
         for j in range(0, self.num_images, self.batch_size):
             batch_range = list(range(j, min(self.num_images, j + self.batch_size)))
             batch_params = {
@@ -234,12 +236,30 @@ class SMALFitter(nn.Module):
                 verts = verts + batch_params['trans'].unsqueeze(1)
                 joints = joints + batch_params['trans'].unsqueeze(1)
 
-                canonical_joints = joints[:, config.CANONICAL_MODEL_JOINTS]
+                canonical_joints = joints[:, config.CANONICAL_MODEL_JOINTS] # seems to be points of SMAL model
+                
+                # view vertices and marker positions in 3D
+                
+                # import matplotlib.pyplot as plt
+                # plt.clf()
+                
+                # canonical_joints_plot = np.array(canonical_joints[0].cpu().tolist())
+                # verts_plot = np.array(verts[0].cpu().tolist())
+                
+                # fig = plt.figure()
+                # ax = fig.add_subplot(111, projection='3d')
+                # ax.scatter(canonical_joints_plot[:, 0], canonical_joints_plot[:, 1], canonical_joints_plot[:, 2], c='r', marker='o', s=100)
+                # ax.scatter(verts_plot[:, 0], verts_plot[:, 1], verts_plot[:, 2], c='b', marker='o', alpha=0.3)                
+                
+                # ax.set_xlabel('X')
+                # ax.set_ylabel('Y')
+                # ax.set_zlabel('Z')
+                # plt.show()
 
                 rendered_silhouettes, rendered_joints, rendered_images = self.renderer(
                     verts, canonical_joints, 
-                    self.smal_model.faces.unsqueeze(0).expand(verts.shape[0], -1, -1), render_texture=True)
-
+                    self.smal_model.faces.unsqueeze(0).expand(verts.shape[0], -1, -1), render_texture=True) # forward pass in renderer seems to project 3d points to 2d image space
+                
                 verts_mean = verts - torch.mean(verts, dim = 1, keepdim=True)
                 joints_mean = canonical_joints - torch.mean(verts, dim = 1, keepdim=True)
 
@@ -254,22 +274,30 @@ class SMALFitter(nn.Module):
                 rendered_images_vis = SMALJointDrawer.draw_joints(rendered_images, rendered_joints, visible = target_visibility)
                 rendered_overlay_vis = SMALJointDrawer.draw_joints(overlay_image, rendered_joints, visible = target_visibility)
                 rev_images_vis = SMALJointDrawer.draw_joints(rev_images, rev_joints, visible = target_visibility)
+                
+                # plt.imshow(np.transpose(np.array(rendered_images_vis[0].cpu().tolist())), interpolation='nearest')
 
                 silhouette_error = 1.0 - F.l1_loss(sil_imgs, rendered_silhouettes, reduction='none')
                 silhouette_error = silhouette_error.expand_as(rgb_imgs).data.cpu()
 
-                collage_rows = torch.cat([
-                    target_vis, rendered_images_vis, 
-                    rendered_overlay_vis, silhouette_error, rev_images_vis
-                ], dim = 3)
+                collage_rows = torch.cat(
+                    [
+                        target_vis,
+                        rendered_images_vis,
+                        rendered_overlay_vis,
+                        silhouette_error,
+                        rev_images_vis,
+                    ],
+                    dim=3,
+                )
 
                 for batch_id, global_id in enumerate(batch_range):
-                    collage_np = np.transpose(collage_rows[batch_id].numpy(), (1, 2, 0))
-                    img_parameters = { k: v[batch_id].cpu().data.numpy() for (k, v) in batch_params.items() }
+                    collage_np = np.transpose(np.array(collage_rows[batch_id].tolist()), (1, 2, 0))
+                    img_parameters = { k: np.array(v[batch_id].cpu().tolist()) for (k, v) in batch_params.items() }
                     image_exporter.export(
                         (collage_np * 255.0).astype(np.uint8), 
                         batch_id, global_id, img_parameters, 
-                        verts, self.smal_model.faces.data.cpu().numpy())
+                        verts, np.array(self.smal_model.faces.data.cpu().tolist()))
             
             
 

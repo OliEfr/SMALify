@@ -4,6 +4,7 @@
 ###
 
 import sys, os
+import subprocess
 sys.path.append(os.path.dirname(sys.path[0]))
 
 import numpy as np
@@ -69,6 +70,23 @@ def main():
 
     model.load_checkpoint(os.path.join("checkpoints", config.CHECKPOINT_NAME), config.EPOCH_NAME)
     model.generate_visualization(image_exporter) # Final stage
+    
+    # Build the full path to the PNG files
+    input_pattern = os.path.join(OUTPUT_DIR, "*.png")
+
+    # Build the ffmpeg command
+    command = [
+        "ffmpeg",
+        "-framerate", "2",
+        "-pattern_type", "glob",
+        "-i", input_pattern,
+        "-pix_fmt", "yuv420p",
+        os.path.join(OUTPUT_DIR, "results.mp4")
+    ]
+
+    # Execute the command
+    subprocess.run(command, check=True)
+    
 
 if __name__ == '__main__':
     main()

@@ -66,7 +66,7 @@ class SMAL3DFitter(nn.Module):
 			torch.zeros(self.batch_size, 6).to(device), requires_grad=False)
 
 		global_rotation_np = eul_to_axis(np.array([0, 0, 0]))
-		global_rotation = torch.from_numpy(global_rotation_np).float().to(device).unsqueeze(0).repeat(batch_size,
+		global_rotation = torch.tensor(global_rotation_np, dtype=torch.float64).to(device).unsqueeze(0).repeat(batch_size,
 																									  1)  # Global Init (Head-On)
 		self.global_rot = nn.Parameter(global_rotation)
 

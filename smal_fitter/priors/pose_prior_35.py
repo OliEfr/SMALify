@@ -55,8 +55,8 @@ class Prior(object):
         self.mean_ch = res['mean_pose']
         self.precs_ch = res['pic']
 
-        self.precs = torch.from_numpy(res['pic'].r.copy()).float().to(device)
-        self.mean = torch.from_numpy(res['mean_pose']).float().to(device)
+        self.precs = torch.tensor(res['pic'].r.copy(), dtype=torch.float64).to(device)
+        self.mean = torch.tensor(res['mean_pose'], dtype=torch.float64).to(device)
 
         # Mouth closed!
         # self.mean[-2] = -0.4
@@ -78,7 +78,7 @@ class Prior(object):
         self.use_ind = np.ones(pose_len, dtype=bool)
         self.use_ind[:prefix] = False
 
-        self.use_ind_tch = torch.from_numpy(self.use_ind).float().to(device)
+        self.use_ind_tch = torch.tensor(self.use_ind, dtype=torch.bool).float().to(device)
 
         ignore_names = get_ignore_names(prior_path)
 

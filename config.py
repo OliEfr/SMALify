@@ -18,14 +18,17 @@ FORCE_SMAL_PRIOR = False # Allow the more recent Unity-based prior for dogs.
 ALLOW_LIMB_SCALING = True # Allow scaling parameters, see Who Left the Dogs Out?
 
 # Sequence/Image Settings
-SHAPE_FAMILY = 1 # Choose from Cat (e.g. House Cat/Tiger/Lion), Canine (e.g. Dog/Wolf), Equine (e.g. Horse/Zebra), Bovine (e.g. Cow), Hippo
+SHAPE_FAMILY = 1 # Choose from Cat (e.g. House Cat/Tiger/Lion), Canine (e.g. Dog/Wolf), Equine (e.g. Horse/Zebra), Bovine (e.g. Cow), Hippo. 0: Cat, 1: Canine (e.g. Dog), 2: Equine (e.g. Horse), 3: Bovine (e.g. Cow), 4: Hippo
 SEQUENCE_OR_IMAGE_NAME = "badja:rs_dog"
 # SEQUENCE_OR_IMAGE_NAME = "stanfordextra:n02099601-golden_retriever/n02099601_176.jpg"
-IMAGE_RANGE = range(0, 1) # Frames to process from sequence. Ignored for stanford extra
+IMAGE_RANGE = range(0, 100) # Frames to process from sequence. Ignored for stanford extra
 WINDOW_SIZE = 10 # Changed number of frames processed in one go.
 
 # Generate video settings
-CHECKPOINT_NAME = "20201001-125009" # the directory to run
+CHECKPOINT_NAME = "latest" # the directory to run. "latest" for latest, or name of directory, e.g. "20210101-000000"
+if CHECKPOINT_NAME == "latest":
+    CHECKPOINT_NAME = sorted(os.listdir("checkpoints"))[-1]
+    
 EPOCH_NAME = "st10_ep0" # convention used for the final output file. Don't change this without good reason.
 
 # SMAL
@@ -100,6 +103,8 @@ BADJA_ANNOTATED_CLASSES = [
     -1, -1, # eyes [left, right]
     -1, 15, # withers, throat
     28] # tail middle
+
+# 25 markers, of which 19 are active
 
 # Visualization
 MARKER_TYPE = [

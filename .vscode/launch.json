@@ -9,14 +9,16 @@
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/smal_fitter/optimize_to_joints.py",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "justMyCode": false
         },
         {
             "name": "Python: GenerateVideo",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/smal_fitter/generate_video.py",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "justMyCode": false
         }
     ]
 }

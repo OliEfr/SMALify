@@ -48,7 +48,7 @@ class ImageExporter():
             pkl.dump(img_parameters, f)
 
         # Export mesh
-        vertices = vertices[batch_id].cpu().numpy()
+        vertices = np.array(vertices[batch_id].cpu().tolist())
         mesh = trimesh.Trimesh(vertices = vertices, faces = faces, process = False)
         mesh.export(os.path.join(self.output_dirs[global_id], "st{0}_ep{1}.ply".format(self.stage_id, self.epoch_name)))
 

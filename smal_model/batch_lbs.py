@@ -25,7 +25,7 @@ def batch_skew(vec, batch_size=None, opts=None):
                 dim=1), [-1])
     out_shape = [batch_size * 9]
     res = torch.Tensor(np.zeros(out_shape[0])).to(device=vec.device)
-    res[np.array(indices.flatten())] = updates
+    res[indices.flatten()] = updates
     res = torch.reshape(res, [batch_size, 3, 3])
 
     return res
@@ -123,7 +123,7 @@ def batch_global_rigid_transformation(Rs, Js, parent, rotate_base = False, betas
         beta_scale_mask = torch.transpose(
             beta_scale_mask.reshape(35*3, 6), 0, 1)
 
-        betas_scale = torch.exp(betas_logscale @ beta_scale_mask)
+        betas_scale = torch.exp(betas_logscale.float() @ beta_scale_mask.float())
         scaling_factors = betas_scale.reshape(-1, 35, 3)
 
     scale_factors_3x3 = torch.diag_embed(scaling_factors, dim1=-2, dim2=-1)

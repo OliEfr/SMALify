@@ -35,7 +35,7 @@ class SMAL(nn.Module):
 
         self.f = dd['f']
 
-        self.faces = torch.from_numpy(self.f.astype(int)).to(device)
+        self.faces = torch.tensor(self.f.astype(int), dtype=torch.int).to(device)
 
         # replaced logic in here (which requried SMPL library with L58-L68)
         # v_template = get_smal_template(
@@ -76,7 +76,7 @@ class SMAL(nn.Module):
 
         # Regressor for joint locations given shape 
         self.J_regressor = Variable(
-            torch.Tensor(dd['J_regressor'].T.todense()),
+            torch.tensor(dd['J_regressor'].T.todense().A, dtype=torch.float64),
             requires_grad=False).to(device)
 
         # Pose blend shape basis
@@ -112,7 +112,7 @@ class SMAL(nn.Module):
         
         if nBetas > 0:
             if del_v is None:
-                v_shaped = v_template + torch.reshape(torch.matmul(beta, self.shapedirs[:nBetas,:]), [-1, self.size[0], self.size[1]])
+                v_shaped = v_template + torch.reshape(torch.matmul(beta.float(), self.shapedirs[:nBetas,:]), [-1, self.size[0], self.size[1]])
             else:
                 v_shaped = v_template + del_v + torch.reshape(torch.matmul(beta, self.shapedirs[:nBetas,:]), [-1, self.size[0], self.size[1]])
         else:
@@ -122,9 +122,9 @@ class SMAL(nn.Module):
                 v_shaped = v_template + del_v 
 
         # 2. Infer shape-dependent joint locations.
-        Jx = torch.matmul(v_shaped[:, :, 0], self.J_regressor)
-        Jy = torch.matmul(v_shaped[:, :, 1], self.J_regressor)
-        Jz = torch.matmul(v_shaped[:, :, 2], self.J_regressor)
+        Jx = torch.matmul(v_shaped[:, :, 0].float(), self.J_regressor.float())
+        Jy = torch.matmul(v_shaped[:, :, 1].float(), self.J_regressor.float())
+        Jz = torch.matmul(v_shaped[:, :, 2].float(), self.J_regressor.float())
         J = torch.stack([Jx, Jy, Jz], dim=2)
         
         # 3. Add pose blend shapes
@@ -168,9 +168,9 @@ class SMAL(nn.Module):
         verts = verts + trans[:,None,:]
 
         # Get joints:
-        joint_x = torch.matmul(verts[:, :, 0], self.J_regressor)
-        joint_y = torch.matmul(verts[:, :, 1], self.J_regressor)
-        joint_z = torch.matmul(verts[:, :, 2], self.J_regressor)
+        joint_x = torch.matmul(verts[:, :, 0].float(), self.J_regressor.float())
+        joint_y = torch.matmul(verts[:, :, 1].float(), self.J_regressor.float())
+        joint_z = torch.matmul(verts[:, :, 2].float(), self.J_regressor.float())
         joints = torch.stack([joint_x, joint_y, joint_z], dim=2)
 
         joints = torch.cat([
